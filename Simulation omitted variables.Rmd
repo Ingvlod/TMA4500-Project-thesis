@@ -8,37 +8,25 @@ output: pdf_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(lme4)
+library(ggplot2)
+library(latex2exp)
 ```
 
 ## Simulate underlying model
 
 ```{r}
-n=2 #obs in cluster
-m=5 #Cluster
-sim=10
-sim_id <- rep(1:sim, each = n*m)
-cluster_id <- rep(rep(1:m, each = n), sim)
-obs_id <- rep(as.factor(rep(1:n,m)), sim)
-x=rnorm(n*m*sim, mean = 40, sd = 2)
-a = rnorm(n*m*sim)+x
-u <- rep(rnorm(m*sim, 0, 0.5), each=n)
-e <- rnorm(n*m*sim, 0, 0.5)
-y <- 5 + 0.25*x + 3*a + u + e
-df <- data.frame(sim_id, cluster_id, obs_id, x, a, u, y)
 
-```
-
-```{r}
-
+#Function to simulate data for given number of simulations and regression coefficients where two of the covariates are correlated. 
 simulate_data_correlated_covariate <- function(sim, b0, b1, b2, n = 100, m = 10){
+  #simulation id, cluster id and observation within cluster id
   sim_id <- rep(1:sim, each = n*m)
   cluster_id <- rep(rep(1:m, each = n), sim)
   obs_id <- rep(as.factor(rep(1:n,m)), sim)
   
-  #fixed effects covariate
+  #fixed effect covariate
   x <- rnorm(n*m*sim, mean = 40, sd = 2)
 
-  #make a correlated with x
+  #fixed effect covariate correlated with x
   a <- rnorm(n*m*sim) + 0.5*x
 
   #random cluster-specific effect
@@ -46,7 +34,8 @@ simulate_data_correlated_covariate <- function(sim, b0, b1, b2, n = 100, m = 10)
   
   #random error
   e <-  rnorm(n*m*sim, 0, 0.5)
-
+  
+  #response
   y <- b0 + b1*x + b2*a + u + e
 
   #Create data frame
@@ -55,38 +44,141 @@ simulate_data_correlated_covariate <- function(sim, b0, b1, b2, n = 100, m = 10)
 }
 ```
 
-#Estimate model with omitted variables
 
 ```{r}
+#Function to estimate regression coefficients by using simulated data from 
+#simulate_data_correlated_covariate() and omit one covariate
 REmodel_estimate_betas_omitted <- function(sim, b0, b1, b2){
   beta0=c()
   beta1=c()
+  
+  #simulate data
   df = simulate_data_correlated_covariate(sim, b0, b1, b2)
+  
+  #for each simulation, estimate regression coefficients and store them
   for (i in 1:sim){
     REmodel_omitted = lmer(y~ x + (1|cluster_id), data = df[df$sim_id == i,])
     beta0=append(beta0,fixef(REmodel_omitted)[1])
     beta1=append(beta1,fixef(REmodel_omitted)[2])
   }
-  return(list("b0"=beta0,"b1"=beta1))
+  betas=data.frame(beta0, beta1)
+  return(betas)
 }
 ```
+
 ```{r}
 set.seed(222)
 b0 = 12 
 b1 = 0.25
 b2 = 1
 betas = REmodel_estimate_betas_omitted(1000, b0, b1, b2) 
-#tar 4 in med 1000 simuleringer
 ```
 
-```{r Fig1, echo=FALSE, fig.height=10, fig.width=15}
-par(mfrow=c(2,2))
-{hist(betas$b0, breaks=0.1*100, prob=TRUE, xlab="x", xlim=c(9,15),ylim=c(0,0.8),
-      main=paste("Figure A.1:Histogram of estimated beta0"))
-  abline(v=b0, col='red',lwd=2)
-  legend("topright",c("True beta0"),fill=c("red"))}
-{hist(betas$b1, breaks=0.1*100, prob=TRUE, xlab="x", xlim=c(0.2,1.5),ylim=c(0,30),
-      main=paste("Figure A.1:Histogram of estimated beta1"))
-  abline(v=b1, col='red',lwd=2)
-  legend("topright",c("True beta1"),fill=c("red"))}
+```{r}
+beta0_ci=quantile(betas$beta0, prob=c(.025, .975))
+beta1_ci=quantile(betas$beta1, prob=c(.025, .975))
+
+hist1 <- ggplot(betas, aes(x=beta0))+geom_histogram(binwidth = 0.25, fill="cyan3", color="darkcyan", alpha=0.3)+
+  geom_vline(aes(xintercept=mean(betas$beta0), color="mean", linetype="mean"), linewidth=1)+
+  geom_vline(aes(xintercept=beta0_ci[1], color="CI", linetype="CI"), linewidth=1)+
+  geom_vline(aes(xintercept=beta0_ci[2], color="CI", linetype="CI"), linewidth=1)+
+  scale_color_manual(name = "Values", values = c("mean" = "coral", "CI"="coral"), labels=c("95% quantile", "Mean"))+
+  scale_linetype_manual(name = "Values", values = c("mean" = "solid", "CI"="dotted"), labels=c("95% quantile", "Mean"))+
+  theme(legend.position = c(0.9,0.85),legend.key = element_rect(colour = "white"))+
+  labs(x=TeX(r'(Estimated $\beta_0$)'))
+hist2 <- ggplot(betas, aes(x=beta1))+geom_histogram(binwidth = 0.005, fill="cyan3", color="darkcyan", alpha=0.3)+
+  geom_vline(aes(xintercept=mean(betas$beta1), color="mean", linetype="mean"), linewidth=1)+
+  geom_vline(aes(xintercept=beta1_ci[1], color="CI", linetype="CI"), linewidth=1)+
+  geom_vline(aes(xintercept=beta1_ci[2], color="CI", linetype="CI"), linewidth=1)+
+  scale_color_manual(name = "Values", values = c("mean" = "coral", "CI"="coral"), labels=c("95% quantile", "Mean"))+
+  scale_linetype_manual(name = "Values", values = c("mean" = "solid", "CI"="dotted"), labels=c("95% quantile", "Mean"))+
+  theme(legend.position = c(0.9,0.85),legend.key = element_rect(colour = "white"))+
+  labs(x=TeX(r'(Estimated $\beta_1$)'))
+hist1
+hist2
+```
+# Random cluster specific effect omitted
+```{r}
+
+#Function to simulate data for given number of simulations and regression coefficients where two of the covariates are correlated. 
+simulate_data_correlated_covariate_random <- function(sim, b0, b1, n = 100, m = 10){
+  #simulation id, cluster id and observation within cluster id
+  sim_id <- rep(1:sim, each = n*m)
+  cluster_id <- rep(rep(1:m, each = n), sim)
+  obs_id <- rep(as.factor(rep(1:n,m)), sim)
+  
+  #fixed effect covariate
+  x <- rnorm(n*m*sim, mean = 40, sd = 2)
+
+  #random effect covariate correlated with x
+  a <- rnorm(n*m*sim) + 0.5*x
+
+  #random cluster-specific effect
+  u <- rep(rnorm(m*sim, 0, 0.5), each = n)
+  u2 <- rep(rnorm(m*sim, 0, 0.5), each = n)
+  
+  #random error
+  e <-  rnorm(n*m*sim, 0, 0.5)
+  
+  #response
+  y <- b0 + b1*x + u2*a + u + e
+
+  #Create data frame
+  df <- data.frame(sim_id, cluster_id, obs_id, x, a, u, y)
+  return(df)
+}
+```
+
+
+```{r}
+#Function to estimate regression coefficients by using simulated data from 
+#simulate_data_correlated_covariate() and omit one covariate
+REmodel_estimate_betas_omitted_random <- function(sim, b0, b1){
+  beta0=c()
+  beta1=c()
+  
+  #simulate data
+  df = simulate_data_correlated_covariate_random(sim, b0, b1)
+  
+  #for each simulation, estimate regression coefficients and store them
+  for (i in 1:sim){
+    REmodel_omitted = lmer(y~ x + (1|cluster_id), data = df[df$sim_id == i,])
+    beta0=append(beta0,fixef(REmodel_omitted)[1])
+    beta1=append(beta1,fixef(REmodel_omitted)[2])
+  }
+  betas=data.frame(beta0, beta1)
+  return(betas)
+}
+```
+
+```{r}
+set.seed(222)
+b0 = 12 
+b1 = 0.25
+b2 = 1
+betas = REmodel_estimate_betas_omitted_random(1000, b0, b1) 
+```
+
+```{r}
+beta0_ci=quantile(betas$beta0, prob=c(.025, .975))
+beta1_ci=quantile(betas$beta1, prob=c(.025, .975))
+
+hist1 <- ggplot(betas, aes(x=beta0))+geom_histogram(binwidth = 0.25, fill="cyan3", color="darkcyan", alpha=0.3)+
+  geom_vline(aes(xintercept=mean(betas$beta0), color="mean", linetype="mean"), linewidth=1)+
+  geom_vline(aes(xintercept=beta0_ci[1], color="CI", linetype="CI"), linewidth=1)+
+  geom_vline(aes(xintercept=beta0_ci[2], color="CI", linetype="CI"), linewidth=1)+
+  scale_color_manual(name = "Values", values = c("mean" = "coral", "CI"="coral"), labels=c("95% quantile", "Mean"))+
+  scale_linetype_manual(name = "Values", values = c("mean" = "solid", "CI"="dotted"), labels=c("95% quantile", "Mean"))+
+  theme(legend.position = c(0.9,0.85),legend.key = element_rect(colour = "white"))+
+  labs(x=TeX(r'(Estimated $\beta_0$)'))
+hist2 <- ggplot(betas, aes(x=beta1))+geom_histogram(binwidth = 0.04, fill="cyan3", color="darkcyan", alpha=0.3)+
+  geom_vline(aes(xintercept=mean(betas$beta1), color="mean", linetype="mean"), linewidth=1)+
+  geom_vline(aes(xintercept=beta1_ci[1], color="CI", linetype="CI"), linewidth=1)+
+  geom_vline(aes(xintercept=beta1_ci[2], color="CI", linetype="CI"), linewidth=1)+
+  scale_color_manual(name = "Values", values = c("mean" = "coral", "CI"="coral"), labels=c("95% quantile", "Mean"))+
+  scale_linetype_manual(name = "Values", values = c("mean" = "solid", "CI"="dotted"), labels=c("95% quantile", "Mean"))+
+  theme(legend.position = c(0.9,0.85),legend.key = element_rect(colour = "white"))+
+  labs(x=TeX(r'(Estimated $\beta_1$)'))
+hist1
+hist2
 ```
