@@ -97,52 +97,59 @@ hist2 <- ggplot(betas, aes(x=beta1))+geom_histogram(binwidth = 0.005, fill="cyan
 hist1
 hist2
 ```
-# Random cluster specific effect omitted
+# Constant within cluster effect omitted
+
+
 ```{r}
 
 #Function to simulate data for given number of simulations and regression coefficients where two of the covariates are correlated. 
-simulate_data_correlated_covariate_random <- function(sim, b0, b1, n = 100, m = 10){
+simulate_data_correlated_covariate_constant_within <- function(sim, b0, b1, b2, n = 100, m = 10){
   #simulation id, cluster id and observation within cluster id
   sim_id <- rep(1:sim, each = n*m)
   cluster_id <- rep(rep(1:m, each = n), sim)
   obs_id <- rep(as.factor(rep(1:n,m)), sim)
   
   #fixed effect covariate
-  x <- rnorm(n*m*sim, mean = 40, sd = 2)
-
-  #random effect covariate correlated with x
-  a <- rnorm(n*m*sim) + 0.5*x
-
+  x <- rnorm(n*m*sim, mean = 10, sd = 2)
+  
+  
+  #fixed effect covariate correlated with x
+  x_mean_cluster <- c()
+  for (i in seq(1, sim*n*m, n)){
+    x_mean_cluster <- append(x_mean_cluster, rep(mean(x[i:(i+n-1)]), n))
+  }
+  a <- 5 + 4*x_mean_cluster + rep(rnorm(m*sim), each = n)
+  a_wrong <- a - 4*x_mean_cluster
   #random cluster-specific effect
   u <- rep(rnorm(m*sim, 0, 0.5), each = n)
-  u2 <- rep(rnorm(m*sim, 0, 0.5), each = n)
   
   #random error
   e <-  rnorm(n*m*sim, 0, 0.5)
   
   #response
-  y <- b0 + b1*x + u2*a + u + e
+  y <- b0 + b1*x + b2*a + u + e
 
   #Create data frame
-  df <- data.frame(sim_id, cluster_id, obs_id, x, a, u, y)
+  df <- data.frame(sim_id, cluster_id, obs_id, x, x_mean_cluster, a, a_wrong, u, y)
   return(df)
 }
+simulate_data_correlated_covariate_constant_within (100, 5, 0.25, 1, n = 2, m = 5)
 ```
 
 
 ```{r}
 #Function to estimate regression coefficients by using simulated data from 
-#simulate_data_correlated_covariate() and omit one covariate
-REmodel_estimate_betas_omitted_random <- function(sim, b0, b1){
+#simulate_data_correlated_covariate_constant_within() and omit one covariate
+REmodel_estimate_betas_omitted_constant <- function(sim, b0, b1, b2){
   beta0=c()
   beta1=c()
   
   #simulate data
-  df = simulate_data_correlated_covariate_random(sim, b0, b1)
+  df = simulate_data_correlated_covariate_constant_within(sim, b0, b1, b2)
   
   #for each simulation, estimate regression coefficients and store them
   for (i in 1:sim){
-    REmodel_omitted = lmer(y~ x + (1|cluster_id), data = df[df$sim_id == i,])
+    REmodel_omitted = lmer(y~ x +x_mean_cluster+ (1|cluster_id), data = df[df$sim_id == i,])
     beta0=append(beta0,fixef(REmodel_omitted)[1])
     beta1=append(beta1,fixef(REmodel_omitted)[2])
   }
@@ -156,7 +163,7 @@ set.seed(222)
 b0 = 12 
 b1 = 0.25
 b2 = 1
-betas = REmodel_estimate_betas_omitted_random(1000, b0, b1) 
+betas = REmodel_estimate_betas_omitted_constant(100, b0, b1, b2) 
 ```
 
 ```{r}
@@ -171,7 +178,7 @@ hist1 <- ggplot(betas, aes(x=beta0))+geom_histogram(binwidth = 0.25, fill="cyan3
   scale_linetype_manual(name = "Values", values = c("mean" = "solid", "CI"="dotted"), labels=c("95% quantile", "Mean"))+
   theme(legend.position = c(0.9,0.85),legend.key = element_rect(colour = "white"))+
   labs(x=TeX(r'(Estimated $\beta_0$)'))
-hist2 <- ggplot(betas, aes(x=beta1))+geom_histogram(binwidth = 0.04, fill="cyan3", color="darkcyan", alpha=0.3)+
+hist2 <- ggplot(betas, aes(x=beta1))+geom_histogram(binwidth = 0.005, fill="cyan3", color="darkcyan", alpha=0.3)+
   geom_vline(aes(xintercept=mean(betas$beta1), color="mean", linetype="mean"), linewidth=1)+
   geom_vline(aes(xintercept=beta1_ci[1], color="CI", linetype="CI"), linewidth=1)+
   geom_vline(aes(xintercept=beta1_ci[2], color="CI", linetype="CI"), linewidth=1)+
@@ -181,4 +188,5 @@ hist2 <- ggplot(betas, aes(x=beta1))+geom_histogram(binwidth = 0.04, fill="cyan3
   labs(x=TeX(r'(Estimated $\beta_1$)'))
 hist1
 hist2
+mean(betas$beta0)
 ```
