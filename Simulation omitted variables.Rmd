@@ -118,7 +118,7 @@ simulate_data_correlated_covariate_constant_within <- function(sim, b0, b1, b2, 
   for (i in seq(1, sim*n*m, n)){
     x_mean_cluster <- append(x_mean_cluster, rep(mean(x[i:(i+n-1)]), n))
   }
-  a <- 5 + 4*x_mean_cluster + rep(rnorm(m*sim), each = n)
+  a <- 2 + 4*x_mean_cluster + rep(rnorm(m*sim), each = n)
   a_wrong <- a - 4*x_mean_cluster
   #random cluster-specific effect
   u <- rep(rnorm(m*sim, 0, 0.5), each = n)
@@ -133,7 +133,6 @@ simulate_data_correlated_covariate_constant_within <- function(sim, b0, b1, b2, 
   df <- data.frame(sim_id, cluster_id, obs_id, x, x_mean_cluster, a, a_wrong, u, y)
   return(df)
 }
-simulate_data_correlated_covariate_constant_within (100, 5, 0.25, 1, n = 2, m = 5)
 ```
 
 
@@ -149,7 +148,7 @@ REmodel_estimate_betas_omitted_constant <- function(sim, b0, b1, b2){
   
   #for each simulation, estimate regression coefficients and store them
   for (i in 1:sim){
-    REmodel_omitted = lmer(y~ x +x_mean_cluster+ (1|cluster_id), data = df[df$sim_id == i,])
+    REmodel_omitted = lmer(y~ x + x_mean_cluster+ (1|cluster_id), data = df[df$sim_id == i,])
     beta0=append(beta0,fixef(REmodel_omitted)[1])
     beta1=append(beta1,fixef(REmodel_omitted)[2])
   }
@@ -160,17 +159,17 @@ REmodel_estimate_betas_omitted_constant <- function(sim, b0, b1, b2){
 
 ```{r}
 set.seed(222)
-b0 = 12 
+b0 = 5 
 b1 = 0.25
 b2 = 1
-betas = REmodel_estimate_betas_omitted_constant(100, b0, b1, b2) 
+betas = REmodel_estimate_betas_omitted_constant(200, b0, b1, b2) 
 ```
 
 ```{r}
 beta0_ci=quantile(betas$beta0, prob=c(.025, .975))
 beta1_ci=quantile(betas$beta1, prob=c(.025, .975))
 
-hist1 <- ggplot(betas, aes(x=beta0))+geom_histogram(binwidth = 0.25, fill="cyan3", color="darkcyan", alpha=0.3)+
+hist1 <- ggplot(betas, aes(x=beta0))+geom_histogram(binwidth = 6, fill="cyan3", color="darkcyan", alpha=0.3)+
   geom_vline(aes(xintercept=mean(betas$beta0), color="mean", linetype="mean"), linewidth=1)+
   geom_vline(aes(xintercept=beta0_ci[1], color="CI", linetype="CI"), linewidth=1)+
   geom_vline(aes(xintercept=beta0_ci[2], color="CI", linetype="CI"), linewidth=1)+
@@ -178,7 +177,7 @@ hist1 <- ggplot(betas, aes(x=beta0))+geom_histogram(binwidth = 0.25, fill="cyan3
   scale_linetype_manual(name = "Values", values = c("mean" = "solid", "CI"="dotted"), labels=c("95% quantile", "Mean"))+
   theme(legend.position = c(0.9,0.85),legend.key = element_rect(colour = "white"))+
   labs(x=TeX(r'(Estimated $\beta_0$)'))
-hist2 <- ggplot(betas, aes(x=beta1))+geom_histogram(binwidth = 0.005, fill="cyan3", color="darkcyan", alpha=0.3)+
+hist2 <- ggplot(betas, aes(x=beta1))+geom_histogram(binwidth = 0.002, fill="cyan3", color="darkcyan", alpha=0.3)+
   geom_vline(aes(xintercept=mean(betas$beta1), color="mean", linetype="mean"), linewidth=1)+
   geom_vline(aes(xintercept=beta1_ci[1], color="CI", linetype="CI"), linewidth=1)+
   geom_vline(aes(xintercept=beta1_ci[2], color="CI", linetype="CI"), linewidth=1)+
@@ -189,4 +188,7 @@ hist2 <- ggplot(betas, aes(x=beta1))+geom_histogram(binwidth = 0.005, fill="cyan
 hist1
 hist2
 mean(betas$beta0)
+beta0_ci
+beta1_ci
+mean(betas$beta1)
 ```
