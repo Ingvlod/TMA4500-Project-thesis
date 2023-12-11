@@ -3,9 +3,11 @@ library(ggplot2)
 library(ggridges)
 library(latex2exp)
 library(plm)
+library(RColorBrewer)
 
 
-#Function to simulate data for given number of simulations and regression coefficients where two of the covariates are correlated. 
+#Function to simulate data for given number of simulations and 
+#regression coefficients where two of the covariates are correlated. 
 simulate_data<- function(sim, b0, b1, b2, n, m, constantwithin=FALSE){
   #simulation id, cluster id and observation within cluster id
   sim_id <- rep(1:sim, each = n*m)
@@ -79,7 +81,7 @@ sim = 1000
 
 #Case A
 betas_A=model_and_estimate_betas_omitted(sim, b0, b1, b2, n, m, constantwithin=FALSE, include_mean=FALSE)
-betas_A$case=rep(as.factor("Case A"), sim)
+betas_A$case=rep(as.factor("A"), sim)
 
 mean(betas_A$beta0)
 quantile(betas_A$beta0, prob=c(.025, .975))
@@ -90,7 +92,7 @@ quantile(betas_A$beta1FE, prob=c(.025, .975))
 
 #Case B
 betas_B=model_and_estimate_betas_omitted(sim, b0, b1, b2, n, m, constantwithin=TRUE, include_mean=TRUE)
-betas_B$case=rep(as.factor("Case B"), sim)
+betas_B$case=rep(as.factor("B"), sim)
 
 mean(betas_B$beta0)
 quantile(betas_B$beta0, prob=c(.025, .975))
@@ -101,7 +103,7 @@ quantile(betas_B$beta1FE, prob=c(.025, .975))
 
 #Case C
 betas_C=model_and_estimate_betas_omitted(sim, b0, b1, b2, n, m, constantwithin=TRUE, include_mean=FALSE)
-betas_C$case=rep(as.factor("Case C"), sim)
+betas_C$case=rep(as.factor("C"), sim)
 
 mean(betas_C$beta0)
 quantile(betas_C$beta0, prob=c(.025, .975))
@@ -113,27 +115,33 @@ quantile(betas_C$beta1FE, prob=c(.025, .975))
 betas_all_cases = rbind(betas_A, betas_B, betas_C)
 
 histogram_beta0<-ggplot(betas_all_cases, aes(x = beta0, y = case, group = case, fill= case))+
-  geom_density_ridges2(stat="binline", bins=50, alpha=0.5, scale=5, color = "azure4")+
-  scale_fill_manual(name="", values=c("darkolivegreen2","brown1","cyan3"))+
+  geom_density_ridges2(stat="binline", bins=50, alpha=0.6, scale=5, color = "azure4")+
+  #scale_fill_manual(name="", values=c("darkolivegreen2","brown1","cyan3"))+
+  scale_fill_brewer(name="Case", palette="Set1")+
   geom_vline(aes(xintercept=b0, color="True beta"), color= "#bf5252", linewidth=0.9, linetype="dashed", alpha=0.8)+
   labs(x=TeX(r'(RE estimated $\beta_0$)'),y=TeX(r'(Count)'))+
-  theme(axis.text=element_text(size=12),axis.title=element_text(size=15),legend.text = element_text(size=14),legend.title = element_text(size=16))
+  theme(axis.text=element_text(size=12),axis.title=element_text(size=15),legend.text = element_text(size=14),legend.title = element_text(size=16))+
+  annotate(geom = "text", x=8, y=7, label=TeX(r'($\beta_0=5$)'), size=5, color="#bf5252")
 histogram_beta0
 
 histogram_beta1<-ggplot(betas_all_cases, aes(x = beta1, y = case, group = case, fill= case))+
-  geom_density_ridges2(stat="binline", bins=50, alpha=0.5, scale=5, color = "azure4")+
-  scale_fill_manual(name="", values=c("darkolivegreen2","brown1","cyan3"))+
+  geom_density_ridges2(stat="binline", bins=50, alpha=0.6, scale=5, color = "azure4")+
+  #scale_fill_manual(name="", values=c("darkolivegreen2","brown1","cyan3"))+
+  scale_fill_brewer(name="Case", palette="Set1")+
   geom_vline(aes(xintercept=b1, color="True beta"), color= "#bf5252", linewidth=0.9, linetype="dashed", alpha=0.8)+
   labs(x=TeX(r'(RE estimated $\beta_1$)'),y=TeX(r'(Count)'))+
-  theme(axis.text=element_text(size=12),axis.title=element_text(size=15),legend.text = element_text(size=14),legend.title = element_text(size=16))
+  theme(axis.text=element_text(size=12),axis.title=element_text(size=15),legend.text = element_text(size=14),legend.title = element_text(size=16))+
+  annotate(geom = "text", x=3.3, y=1.5, label=TeX(r'($\beta_1=3$)'), size=5, color="#bf5252")
 histogram_beta1
 
 histogram_beta1FE<-ggplot(betas_all_cases, aes(x = beta1FE, y = case, group = case, fill= case))+
-  geom_density_ridges2(stat="binline", bins=50, alpha=0.5, scale=5, color = "azure4")+
-  scale_fill_manual(name="", values=c("darkolivegreen2","brown1","cyan3"))+
+  geom_density_ridges2(stat="binline", bins=50, alpha=0.6, scale=5, color = "azure4")+
+  #scale_fill_manual(name="", values=c("darkolivegreen2","brown1","cyan3"))+
+  scale_fill_brewer(name="Case", palette="Set1")+
   geom_vline(aes(xintercept=b1, color="True beta"), color= "#bf5252", linewidth=0.9, linetype="dashed", alpha=0.8)+
   labs(x=TeX(r'(FE estimated $\beta_1$)'),y=TeX(r'(Count)'))+
-  theme(axis.text=element_text(size=12),axis.title=element_text(size=15),legend.text = element_text(size=14),legend.title = element_text(size=16))
+  theme(axis.text=element_text(size=12),axis.title=element_text(size=15),legend.text = element_text(size=14),legend.title = element_text(size=16))+
+  annotate(geom = "text", x=3.3, y=1.5, label=TeX(r'($\beta_1=3$)'), size=5, color="#bf5252")
 histogram_beta1FE
 
 
@@ -149,23 +157,47 @@ m=100
 sim=500
 
 betas = model_and_estimate_betas_omitted(sim, b0, b1, b2, n, m, constantwithin = TRUE, include_mean=FALSE)
-
+display.brewer.all()
 hist_RE <- 
   ggplot(betas, aes(x=beta1, fill=as.factor(cluster_size)))+
   geom_histogram(binwidth = 0.03, color="darkslategray", alpha=0.5, position='identity')+
   geom_vline(aes(xintercept=b1), color= "#bf5252", linewidth=0.9, linetype="dashed", alpha=0.8)+
-  scale_fill_manual(name="Cluster size, n", values=c("brown1","cyan3","darkolivegreen2"))+ 
+  scale_fill_brewer(name="Cluster size, n", palette="Set2")+
   theme(legend.position = c(0.88,0.85),legend.key = element_rect(colour = "white"))+
   labs(x=TeX(r'(RE estimated $\beta_1$)'),y=TeX(r'(Count)'))+
-  theme(axis.text=element_text(size=14),axis.title=element_text(size=18),legend.text = element_text(size=14),legend.title = element_text(size=16))
+  theme(axis.text=element_text(size=14),axis.title=element_text(size=18),legend.text = element_text(size=14),legend.title = element_text(size=16))+
+  annotate(geom = "text", x=3.05, y=200, label=TeX(r'($\beta_1=3$)'), size=5, color="#bf5252")
 hist_RE
 
+hist_RE <- 
+  ggplot(betas, aes(x=beta1, y = as.factor(cluster_size), group = cluster_size, fill=as.factor(cluster_size)))+
+  geom_density_ridges2(stat="binline", bins=50, alpha=0.6, scale=5, color = "azure4")+
+  geom_vline(aes(xintercept=b1), color= "#bf5252", linewidth=0.9, linetype="dashed", alpha=0.8)+
+  scale_fill_brewer(name="Cluster size, n", palette="Set2")+
+  theme(legend.position = c(0.88,0.80),legend.key = element_rect(colour = "white"))+
+  labs(x=TeX(r'(RE estimated $\beta_1$)'),y=TeX(r'(Cluster size)'))+
+  theme(axis.text=element_text(size=14),axis.title=element_text(size=18),legend.text = element_text(size=14),legend.title = element_text(size=16))+
+  annotate(geom = "text", x=2.95, y=7, label=TeX(r'($\beta_1=3$)'), size=5, color="#bf5252")
+hist_RE
 hist_FE <- ggplot(betas, aes(x=beta1FE, fill=as.factor(cluster_size)))+
   geom_histogram(binwidth = 0.03, color="darkslategray", alpha=0.5, position='identity')+
   geom_vline(aes(xintercept=b1), color= "#bf5252", linewidth=0.9, linetype="dashed", alpha=0.8)+
-  scale_fill_manual(name="Cluster size, n", values=c("brown1","cyan3","darkolivegreen2"))+ 
+  scale_fill_brewer(name="Cluster size, n", palette="Set2")+
   theme(legend.position = c(0.88,0.85),legend.key = element_rect(colour = "white"))+
-  labs(x=TeX(r'(FE estimated $\beta_1$)'),y=TeX(r'(Count)'))+
-  theme(axis.text=element_text(size=14),axis.title=element_text(size=18),legend.text = element_text(size=14),legend.title = element_text(size=16))
+  labs(x=TeX(r'(FE estimated $\beta_1$)'),y=TeX(r'(Cluster size)'))+
+  theme(axis.text=element_text(size=14),axis.title=element_text(size=18),legend.text = element_text(size=14),legend.title = element_text(size=16))+
+  annotate(geom = "text", x=3.05, y=200, label=TeX(r'($\beta_1=3$)'), size=5, color="#bf5252")
+hist_FE
+
+
+hist_FE <- 
+  ggplot(betas, aes(x=beta1FE, y = as.factor(cluster_size), group = cluster_size, fill=as.factor(cluster_size)))+
+  geom_density_ridges2(stat="binline", bins=50, alpha=0.6, scale=5, color = "azure4")+
+  geom_vline(aes(xintercept=b1), color= "#bf5252", linewidth=0.9, linetype="dashed", alpha=0.8)+
+  scale_fill_brewer(name="Cluster size, n", palette="Set2")+
+  theme(legend.position = c(0.88,0.80),legend.key = element_rect(colour = "white"))+
+  labs(x=TeX(r'(FE estimated $\beta_1$)'),y=TeX(r'(Cluster size)'))+
+  theme(axis.text=element_text(size=14),axis.title=element_text(size=18),legend.text = element_text(size=14),legend.title = element_text(size=16))+
+  annotate(geom = "text", x=2.95, y=7, label=TeX(r'($\beta_1=3$)'), size=5, color="#bf5252")
 hist_FE
 
