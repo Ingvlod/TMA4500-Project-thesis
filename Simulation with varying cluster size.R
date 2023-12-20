@@ -5,7 +5,6 @@ library(latex2exp)
 library(plm)
 library(RColorBrewer)
 
-
 #Function to simulate data for given number of simulations and 
 #regression coefficients where two of the covariates are correlated. 
 simulate_data<- function(sim, b0, b1, b2, n, m, constantwithin=FALSE){
